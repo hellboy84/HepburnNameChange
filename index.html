@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
-<title>ヘボン式ローマ字姓名変換ツール</title>
+<title>ヘボン式ローマ字氏名変換ツール</title>
 <style>
   :root {
     --bg: #f6f7f9;
@@ -110,7 +110,7 @@
 </head>
 <body>
 <main>
-  <h1>ヘボン式ローマ字姓名変換ツール</h1>
+  <h1>ヘボン式ローマ字氏名変換ツール</h1>
   <p class="lead">ヘボン式ローマ字の氏名をカタカナ／ひらがなに一括変換します（逆変換にも対応）。入力内容は外部に送信されず、すべてブラウザ内で処理されます。</p>
 
   <div class="tabs" role="tablist">
@@ -132,8 +132,8 @@
         <label class="opt"><input type="radio" name="r2k-script" value="hira"> ひらがな</label>
       </fieldset>
       <fieldset>
-        <legend>姓名の順序</legend>
-        <label class="opt"><input type="checkbox" id="r2k-reverse" checked> 姓名を反転する <small>（Hanako SUZUKI → スズキ ハナコ）</small></label>
+        <legend>氏名の順序</legend>
+        <label class="opt"><input type="checkbox" id="r2k-reverse" checked> 氏名を反転する <small>（Hanako SUZUKI → スズキ ハナコ）</small></label>
         <label class="opt">区切り
           <select id="r2k-sep">
             <option value=" ">半角スペース</option>
@@ -186,7 +186,7 @@
         <label class="opt"><input type="radio" name="k2r-case" value="upper-family" checked> Taro YAMADA</label>
         <label class="opt"><input type="radio" name="k2r-case" value="title"> Taro Yamada</label>
         <label class="opt"><input type="radio" name="k2r-case" value="upper"> TARO YAMADA</label>
-        <label class="opt"><input type="checkbox" id="k2r-reverse" checked> 姓名を反転する <small>（ヤマダ タロウ → Taro YAMADA）</small></label>
+        <label class="opt"><input type="checkbox" id="k2r-reverse" checked> 氏名を反転する <small>（ヤマダ タロウ → Taro YAMADA）</small></label>
         <label class="opt">区切り
           <select id="k2r-sep">
             <option value=" ">半角スペース</option>
@@ -218,7 +218,7 @@
     </ul>
   </details>
 
-  <footer>ヘボン式ローマ字姓名変換ツール — 外部通信なし・単一HTMLファイルで動作します。</footer>
+  <footer>ヘボン式ローマ字氏名変換ツール — 外部通信なし・単一HTMLファイルで動作します。</footer>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
