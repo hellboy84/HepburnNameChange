@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
+<title>ヘボン式ローマ字姓名変換ツール</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --text: #1d2330;
+    --muted: #5d6677;
+    --line: #dde1e8;
+    --accent: #2f5bd3;
+    --accent-weak: #e8eefc;
+    --warn: #9a5b00;
+    --warn-bg: #fff4e0;
+    --mark: #c2410c;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171d;
+      --panel: #1c2028;
+      --text: #e6e9ef;
+      --muted: #9aa3b2;
+      --line: #313745;
+      --accent: #7ea2ff;
+      --accent-weak: #232c42;
+      --warn: #f3b562;
+      --warn-bg: #2f2616;
+      --mark: #fb923c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+    line-height: 1.6;
+  }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 20px; font-size: .92rem; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+  .tab {
+    appearance: none; border: 1px solid transparent; border-bottom: none;
+    background: none; color: var(--muted); padding: 10px 16px; font: inherit;
+    cursor: pointer; border-radius: 8px 8px 0 0; margin-bottom: -1px;
+  }
+  .tab[aria-selected="true"] {
+    background: var(--panel); color: var(--text); border-color: var(--line); font-weight: 600;
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  label.block { display: block; font-weight: 600; margin-bottom: 6px; }
+  textarea {
+    width: 100%; min-height: 170px; resize: vertical; font: 1rem/1.6 var(--mono);
+    padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--text);
+  }
+  textarea:focus, select:focus, button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px;
+  }
+  .hint { color: var(--muted); font-size: .85rem; margin: 6px 0 0; }
+  .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 24px; }
+  fieldset { border: none; margin: 0; padding: 0; min-width: 0; }
+  legend { font-weight: 600; font-size: .9rem; margin-bottom: 4px; padding: 0; }
+  .opt { display: block; padding-left: 22px; text-indent: -22px; font-size: .92rem; margin: 2px 0; cursor: pointer; }
+  .opt input[type=radio], .opt input[type=checkbox] { width: 16px; margin: 0 6px 0 0; vertical-align: -2px; }
+  .opt select { text-indent: 0; }
+  .opt small { color: var(--muted); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .spacer { flex: 1; }
+  button.btn {
+    font: inherit; font-size: .9rem; padding: 7px 14px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--panel); color: var(--text);
+  }
+  button.btn:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  @media (prefers-color-scheme: dark) { button.primary { color: #0f1320; } }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: .8rem; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  td.num { color: var(--muted); width: 2.5em; font-variant-numeric: tabular-nums; }
+  td.in { font-family: var(--mono); color: var(--muted); }
+  td.out { font-weight: 600; font-size: 1.05rem; }
+  td.note { font-size: .85rem; color: var(--warn); }
+  td.note .ins { color: var(--mark); font-weight: 700; }
+  .note-line + .note-line { margin-top: 2px; }
+  .empty { color: var(--muted); font-size: .9rem; padding: 12px 2px; }
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: var(--bg); padding: 8px 16px; border-radius: 8px;
+    font-size: .9rem; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  details { font-size: .88rem; color: var(--muted); }
+  details summary { cursor: pointer; color: var(--text); }
+  details ul { padding-left: 1.3em; margin: 6px 0; }
+  footer { color: var(--muted); font-size: .8rem; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>ヘボン式ローマ字姓名変換ツール</h1>
+  <p class="lead">ヘボン式ローマ字の氏名をカタカナ／ひらがなに一括変換します（逆変換にも対応）。入力内容は外部に送信されず、すべてブラウザ内で処理されます。</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-r2k" aria-controls="panel-r2k" aria-selected="true">ヘボン式 → カナ</button>
+    <button class="tab" role="tab" id="tab-k2r" aria-controls="panel-k2r" aria-selected="false">カナ → ヘボン式</button>
+  </div>
+
+  <!-- ローマ字 → かな -->
+  <section class="panel active" id="panel-r2k" role="tabpanel" aria-labelledby="tab-r2k">
+    <div class="card">
+      <label class="block" for="r2k-input">ローマ字の氏名（1行に1名）</label>
+      <textarea id="r2k-input" spellcheck="false" placeholder="Taro YAMADA&#10;Hanako Suzuki"></textarea>
+      <p class="hint">姓と名は半角または全角スペースで区切ってください。</p>
+    </div>
+    <div class="card options">
+      <fieldset>
+        <legend>出力文字種</legend>
+        <label class="opt"><input type="radio" name="r2k-script" value="kata" checked> カタカナ</label>
+        <label class="opt"><input type="radio" name="r2k-script" value="hira"> ひらがな</label>
+      </fieldset>
+      <fieldset>
+        <legend>姓名の順序</legend>
+        <label class="opt"><input type="checkbox" id="r2k-reverse" checked> 姓名を反転する <small>（Hanako SUZUKI → スズキ ハナコ）</small></label>
+        <label class="opt">区切り
+          <select id="r2k-sep">
+            <option value=" ">半角スペース</option>
+            <option value="　">全角スペース</option>
+            <option value=", ">半角カンマ＋半角スペース</option>
+            <option value="，">全角カンマ</option>
+            <option value="">なし</option>
+          </select>
+        </label>
+      </fieldset>
+      <fieldset>
+        <legend>長音</legend>
+        <label class="opt"><input type="checkbox" id="r2k-mark" checked> 長音が省略されている可能性がある箇所に印をつける <small>（yuko → ユ(ウ)コ）</small></label>
+      </fieldset>
+    </div>
+    <div class="card">
+      <div class="row" style="margin-bottom:10px">
+        <strong>変換結果</strong>
+        <span class="spacer"></span>
+        <button class="btn" data-sample="r2k">テスト例を入力</button>
+        <button class="btn" data-clear="r2k">クリア</button>
+        <button class="btn" data-copy-tsv="r2k" title="入力・結果・注記をタブ区切りでコピー（Excel等に貼り付け可）">表形式でコピー</button>
+        <button class="btn primary" data-copy="r2k">結果をコピー</button>
+      </div>
+      <div class="table-wrap" id="r2k-out"></div>
+    </div>
+  </section>
+
+  <!-- かな → ローマ字 -->
+  <section class="panel" id="panel-k2r" role="tabpanel" aria-labelledby="tab-k2r">
+    <div class="card">
+      <label class="block" for="k2r-input">カタカナ／ひらがなの氏名（1行に1名・姓 名の順）</label>
+      <textarea id="k2r-input" spellcheck="false" placeholder="ヤマダ タロウ&#10;すずき はなこ"></textarea>
+      <p class="hint">姓と名は半角または全角スペースで区切ってください。漢字には対応していません。</p>
+    </div>
+    <div class="card options">
+      <fieldset>
+        <legend>長音（ou・oo・uu）</legend>
+        <label class="opt"><input type="radio" name="k2r-long" value="omit" checked> 省略 <small>（Yuko, Ono, Sato）</small></label>
+        <label class="opt"><input type="radio" name="k2r-long" value="h"> h表記 <small>（Yuko, Ohno, Satoh）</small></label>
+        <label class="opt"><input type="radio" name="k2r-long" value="macron"> マクロン <small>（Yūko, Ōno, Satō）</small></label>
+      </fieldset>
+      <fieldset>
+        <legend>撥音「ン」（b・m・p の前）</legend>
+        <label class="opt"><input type="radio" name="k2r-n" value="m" checked> m にする <small>（Namba, Homma）</small></label>
+        <label class="opt"><input type="radio" name="k2r-n" value="n"> n のまま <small>（Nanba, Honma）</small></label>
+      </fieldset>
+      <fieldset>
+        <legend>出力形式</legend>
+        <label class="opt"><input type="radio" name="k2r-case" value="upper-family" checked> Taro YAMADA</label>
+        <label class="opt"><input type="radio" name="k2r-case" value="title"> Taro Yamada</label>
+        <label class="opt"><input type="radio" name="k2r-case" value="upper"> TARO YAMADA</label>
+        <label class="opt"><input type="checkbox" id="k2r-reverse" checked> 姓名を反転する <small>（ヤマダ タロウ → Taro YAMADA）</small></label>
+        <label class="opt">区切り
+          <select id="k2r-sep">
+            <option value=" ">半角スペース</option>
+            <option value=", ">半角カンマ＋半角スペース</option>
+          </select>
+        </label>
+      </fieldset>
+    </div>
+    <div class="card">
+      <div class="row" style="margin-bottom:10px">
+        <strong>変換結果</strong>
+        <span class="spacer"></span>
+        <button class="btn" data-sample="k2r">テスト例を入力</button>
+        <button class="btn" data-clear="k2r">クリア</button>
+        <button class="btn" data-copy-tsv="k2r" title="入力・結果・注記をタブ区切りでコピー（Excel等に貼り付け可）">表形式でコピー</button>
+        <button class="btn primary" data-copy="k2r">結果をコピー</button>
+      </div>
+      <div class="table-wrap" id="k2r-out"></div>
+    </div>
+  </section>
+
+  <details class="card">
+    <summary>変換ルールについて</summary>
+    <ul>
+      <li><b>ローマ字 → カナ：</b>oo・ou・uu・ei などの綴りはそのまま反映します（Yuuko → ユウコ）。「oh」＋子音/語末は長音として扱い、語頭は「オオ」（Ohno → オオノ）、それ以外は「オウ」（Satoh → サトウ）と解釈します。マクロン（ō, ū など）にも対応しています。</li>
+      <li>長音の印は、人名で長音が現れやすい語頭（大・光・洋・翔・裕・隆 など）と語末（〜郎・〜藤・〜蔵・〜城 など）に限って付けます。語中や、「吉・米・俊・智」など長音にならない読みで始まる語、長音を明記している語には付けません。あくまで<em>可能性</em>の提示なので、実際の読みはご本人に確認してください。</li>
+      <li>m + b/m/p は「ン」（Namba → ナンバ）、tch は「ッチ」、重子音は「ッ」になります。訓令式の綴り（si, ti, tu, hu, zi など）も受け付けます。</li>
+      <li><b>カナ → ローマ字：</b>パスポート式のヘボン式に準じます。撥音の後に母音が続く場合もアポストロフィは付けません（ケンイチ → Kenichi）。ii・ei・aa は省略しません（ニイガタ → Niigata）。</li>
+    </ul>
+  </details>
+
+  <footer>ヘボン式ローマ字姓名変換ツール — 外部通信なし・単一HTMLファイルで動作します。</footer>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+/* ========== 共通 ========== */
+const VOWELS = 'aiueo'; // 五十音の段の順
+const kataToHira = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+const hiraToKata = s => s.replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60));
+const splitName = line => line.replace(/[,，、]/g, ' ').trim().split(/[\s　]+/).filter(Boolean);
+
+/* ========== ローマ字 → カタカナ ========== */
+const ROMA2KANA = (() => {
+  const m = {};
+  const rows = {
+    '': 'アイウエオ', k: 'カキクケコ', g: 'ガギグゲゴ', s: 'サシスセソ', z: 'ザジズゼゾ',
+    t: 'タチツテト', d: 'ダヂヅデド', n: 'ナニヌネノ', h: 'ハヒフヘホ', b: 'バビブベボ',
+    p: 'パピプペポ', m: 'マミムメモ', r: 'ラリルレロ', l: 'ラリルレロ',
+    y: ['ヤ', 'イ', 'ユ', 'イェ', 'ヨ'], w: ['ワ', 'ウィ', 'ウ', 'ウェ', 'ヲ'],
+    v: ['ヴァ', 'ヴィ', 'ヴ', 'ヴェ', 'ヴォ'], f: ['ファ', 'フィ', 'フ', 'フェ', 'フォ'],
+  };
+  const smallY = { a: 'ャ', u: 'ュ', e: 'ェ', o: 'ョ' };
+  for (const [c, kana] of Object.entries(rows)) {
+    [...VOWELS].forEach((v, i) => { m[c + v] = kana[i]; });
+  }
+  for (const c of 'kgnhbpmrl') {
+    for (const [v, sm] of Object.entries(smallY)) m[c + 'y' + v] = rows[c][1] + sm;
+  }
+  const palatal = { sh: 'シ', ch: 'チ', j: 'ジ', sy: 'シ', zy: 'ジ', jy: 'ジ', ty: 'チ', cy: 'チ', dy: 'ヂ' };
+  for (const [c, base] of Object.entries(palatal)) {
+    for (const [v, sm] of Object.entries(smallY)) m[c + v] = base + sm;
+    if (!c.endsWith('y')) m[c + 'i'] = base;
+  }
+  Object.assign(m, { tsu: 'ツ', tsa: 'ツァ', tsi: 'ツィ', tse: 'ツェ', tso: 'ツォ', fyu: 'フュ' });
+  return m;
+})();
+
+// 長音記号の目印（内部用）
+const LONG_O = '\u0001', LONG_U = '\u0002', LONG_A = '\u0003', LONG_I = '\u0004', LONG_E = '\u0005';
+
+function normalizeRomaji(word) {
+  let w = word.normalize('NFKC').toLowerCase().replace(/[’`]/g, "'");
+  w = w.replace(/[ōô]/g, 'o' + LONG_O).replace(/[ūû]/g, 'u' + LONG_U)
+       .replace(/[āâ]/g, 'a' + LONG_A).replace(/[īî]/g, 'i' + LONG_I).replace(/[ēê]/g, 'e' + LONG_E);
+  // oh + 子音/語末 → 長音（Ohno, Satoh）
+  w = w.replace(/oh(?![aiueoy])/g, 'o' + LONG_O);
+  return w;
+}
+
+function tokenizeRomaji(word) {
+  const w = normalizeRomaji(word);
+  const toks = [];
+  let i = 0;
+  while (i < w.length) {
+    const c = w[i], n1 = w[i + 1];
+    if (c === "'" || c === '-' || c === '.') { i++; continue; }
+    if (c === LONG_O) {
+      const initial = toks.length === 1 && toks[0].r === 'o';
+      toks.push({ k: initial ? 'オ' : 'ウ', t: 'long', amb: initial ? 'オオ' : 'オウ' });
+      i++; continue;
+    }
+    if (c === LONG_U) { toks.push({ k: 'ウ', t: 'long' }); i++; continue; }
+    if (c === LONG_A) { toks.push({ k: 'ア', t: 'long' }); i++; continue; }
+    if (c === LONG_I) { toks.push({ k: 'イ', t: 'long' }); i++; continue; }
+    if (c === LONG_E) { toks.push({ k: 'エ', t: 'long' }); i++; continue; }
+    if (c === 'n' && (n1 === undefined || !(VOWELS.includes(n1) || n1 === 'y'))) {
+      toks.push({ k: 'ン', t: 'n' }); i++; continue;
+    }
+    if (c === 'm' && n1 && 'bmp'.includes(n1)) { toks.push({ k: 'ン', t: 'n' }); i++; continue; }
+    if (/[a-z]/.test(c) && !VOWELS.includes(c) && c !== 'n' &&
+        (n1 === c || (c === 't' && n1 === 'c' && w[i + 2] === 'h') || (c === 'c' && n1 === 'c'))) {
+      toks.push({ k: 'ッ', t: 'q' }); i++; continue;
+    }
+    let hit = null;
+    for (let len = 3; len >= 1; len--) {
+      const s = w.substr(i, len);
+      if (s.length === len && ROMA2KANA[s]) { hit = s; break; }
+    }
+    if (hit) { toks.push({ k: ROMA2KANA[hit], r: hit, t: 'syl' }); i += hit.length; continue; }
+    toks.push({ k: c, t: 'raw' }); i++;
+  }
+  return toks;
+}
+
+// 長音省略の可能性がある位置に印をつける
+// ローマ字の綴りだけでは長音の有無は決まらないため、人名で長音が現れやすい
+// 「語頭」と「語末」に絞って候補を示す（語中は対象外）。
+const INITIAL_LONG = new Set(['o', 'ko', 'go', 'so', 'to', 'do', 'ho', 'yo', 'jo', 'sho', 'cho', 'kyo', 'ryo', 'hyo']); // 大・光・剛・宗・東・洋・翔・恭・亮 など
+const FINAL_LONG = new Set(['do', 'ro', 'zo', 'jo', 'sho', 'cho', 'kyo', 'ryo', 'hyo']); // 藤(ド)・郎・蔵・城・翔 など
+const PALATAL_U = /^(y|ky|gy|sh|ch|j|ry|ny|hy|my|by|py)u$/; // 裕・隆・修・純 など
+// 長音にならない読みで始まることが多い語頭（吉・米・俊・智・富・徳・星・堀・細・小林・小松・小西・後藤）
+const SHORT_PREFIX = ['yoshi', 'yone', 'toshi', 'tomo', 'tomi', 'toku', 'hoshi', 'hori', 'hoso', 'koba', 'koma', 'koni', 'goto'];
+
+function markOmittedLong(toks, word) {
+  const w = normalizeRomaji(word);
+  // 長音を明記している語（oh・oo・ou・uu・マクロン）は、他の箇所も省略していないとみなす
+  if (toks.some(t => t.t === 'long') || /oo|ou|uu/.test(w)) return;
+  const n = toks.length;
+  const sylCount = toks.filter(t => t.t === 'syl').length;
+  const first = toks[0], next = toks[1];
+  if (first && first.t === 'syl' && (INITIAL_LONG.has(first.r) || PALATAL_U.test(first.r)) &&
+      !SHORT_PREFIX.some(p => w.startsWith(p)) &&
+      (!next || (next.t === 'syl' && !VOWELS.includes(next.r[0])))) {
+    first.mark = first.r === 'o' ? 'オ' : 'ウ';
+  }
+  if (n < 2) return;
+  const last = toks[n - 1], prev = toks[n - 2];
+  if (last.t !== 'syl') return;
+  if ((FINAL_LONG.has(last.r) && !(last.r === 'ro' && prev.r === 'hi')) ||
+      // 〜ト：佐藤・伊藤・斎藤など短い姓に多く、直人・誠・隼人など名前の「ト」は除く
+      (last.r === 'to' && (sylCount <= 2 || prev.r === 'i')) ||
+      PALATAL_U.test(last.r)) {
+    last.mark = 'ウ';
+  }
+}
+
+function romajiWordToKana(word) {
+  const toks = tokenizeRomaji(word);
+  markOmittedLong(toks, word);
+  let plain = '', hinted = '', html = '';
+  const notes = [], unknown = [];
+  for (const tk of toks) {
+    plain += tk.k; hinted += tk.k; html += escapeHtml(tk.k);
+    if (tk.mark) { hinted += `(${tk.mark})`; html += `<span class="ins">(${tk.mark})</span>`; }
+    if (tk.amb) notes.push(`${word}：「oh／ō」を「${tk.amb}」と解釈（「${tk.amb === 'オオ' ? 'オウ' : 'オオ'}」の可能性あり）`);
+    if (tk.t === 'raw') unknown.push(tk.k);
+  }
+  if (unknown.length) notes.push(`${word}：変換できない文字「${[...new Set(unknown)].join('')}」`);
+  return { plain, hinted, html, notes, marked: toks.some(t => t.mark) };
+}
+
+function convertRomajiLine(line, opt) {
+  const words = splitName(line);
+  if (!words.length) return null;
+  const conv = words.map(romajiWordToKana);
+  if (opt.reverse) conv.reverse();
+  const fix = s => opt.script === 'hira' ? kataToHira(s) : s;
+  const result = fix(conv.map(c => c.plain).join(opt.sep));
+  const notes = conv.flatMap(c => c.notes).map(fix);
+  const noteHtml = [];
+  let hintText = '';
+  if (opt.mark && conv.some(c => c.marked)) {
+    hintText = fix(conv.map(c => c.hinted).join(opt.sep));
+    noteHtml.push('長音省略の可能性：' + fix(conv.map(c => c.html).join(escapeHtml(opt.sep))));
+  }
+  notes.forEach(n => noteHtml.push(escapeHtml(n)));
+  const noteText = [hintText && '長音省略の可能性：' + hintText, ...notes].filter(Boolean).join(' / ');
+  return { result, noteText, noteHtml };
+}
+
+/* ========== カタカナ → ローマ字 ========== */
+const KANA2ROMA = (() => {
+  const m = {};
+  const rows = [['', 'アイウエオ'], ['k', 'カキクケコ'], ['g', 'ガギグゲゴ'], ['s', 'サシスセソ'], ['z', 'ザジズゼゾ'],
+    ['t', 'タチツテト'], ['d', 'ダヂヅデド'], ['n', 'ナニヌネノ'], ['h', 'ハヒフヘホ'], ['b', 'バビブベボ'],
+    ['p', 'パピプペポ'], ['m', 'マミムメモ'], ['r', 'ラリルレロ']];
+  for (const [c, kana] of rows) [...kana].forEach((k, i) => { m[k] = c + VOWELS[i]; });
+  Object.assign(m, {
+    シ: 'shi', チ: 'chi', ツ: 'tsu', フ: 'fu', ジ: 'ji', ヂ: 'ji', ヅ: 'zu',
+    ヤ: 'ya', ユ: 'yu', ヨ: 'yo', ワ: 'wa', ヲ: 'o', ヰ: 'i', ヱ: 'e', ヴ: 'vu',
+    ァ: 'a', ィ: 'i', ゥ: 'u', ェ: 'e', ォ: 'o', ャ: 'ya', ュ: 'yu', ョ: 'yo', ヮ: 'wa',
+  });
+  for (const k of 'キギシジチヂニヒビピミリ') {
+    const stem = m[k].slice(0, -1);
+    const glue = (stem.endsWith('h') || stem === 'j') ? '' : 'y';
+    m[k + 'ャ'] = stem + glue + 'a';
+    m[k + 'ュ'] = stem + glue + 'u';
+    m[k + 'ョ'] = stem + glue + 'o';
+    if (!glue) m[k + 'ェ'] = stem + 'e';
+  }
+  Object.assign(m, {
+    ファ: 'fa', フィ: 'fi', フェ: 'fe', フォ: 'fo', フュ: 'fyu',
+    ティ: 'ti', ディ: 'di', トゥ: 'tu', ドゥ: 'du', テュ: 'tyu', デュ: 'dyu',
+    ウィ: 'wi', ウェ: 'we', ウォ: 'wo', イェ: 'ye',
+    ヴァ: 'va', ヴィ: 'vi', ヴェ: 've', ヴォ: 'vo',
+    ツァ: 'tsa', ツィ: 'tsi', ツェ: 'tse', ツォ: 'tso',
+  });
+  return m;
+})();
+
+const MACRON = { a: 'ā', i: 'ī', u: 'ū', e: 'ē', o: 'ō' };
+
+function kanaWordToRomaji(word, opt) {
+  const w = hiraToKata(word.normalize('NFKC'));
+  const toks = [];
+  const unknown = [];
+  for (let i = 0; i < w.length;) {
+    const c = w[i];
+    if (c === 'ッ') { toks.push({ t: 'q' }); i++; continue; }
+    if (c === 'ン') { toks.push({ t: 'n' }); i++; continue; }
+    if (c === 'ー' || c === '〜' || c === '-') {
+      const prev = toks[toks.length - 1];
+      if (prev && prev.t === 'syl') prev.long = true;
+      i++; continue;
+    }
+    const two = w.substr(i, 2);
+    if (two.length === 2 && KANA2ROMA[two]) { toks.push({ t: 'syl', r: KANA2ROMA[two] }); i += 2; continue; }
+    if (KANA2ROMA[c]) {
+      const r = KANA2ROMA[c];
+      const prev = toks[toks.length - 1];
+      // オウ・オオ・ウウ は長音
+      if (prev && prev.t === 'syl' && !prev.long &&
+          ((r === 'u' && /[ou]$/.test(prev.r)) || (r === 'o' && /o$/.test(prev.r)))) {
+        prev.long = true; i++; continue;
+      }
+      toks.push({ t: 'syl', r }); i++; continue;
+    }
+    toks.push({ t: 'raw', r: c }); unknown.push(c); i++;
+  }
+  // 音節ごとの綴り
+  const parts = toks.map((tk, i) => {
+    if (tk.t !== 'syl') return tk.t === 'raw' ? tk.r : '';
+    if (!tk.long) return tk.r;
+    const v = tk.r.slice(-1);
+    if (opt.long === 'macron') return tk.r.slice(0, -1) + MACRON[v];
+    // h表記：直後が h で始まる場合は付けない（ショウヘイ → Shohei）
+    const next = toks[i + 1];
+    if (opt.long === 'h' && v === 'o' && !(next && next.t === 'syl' && next.r[0] === 'h')) return tk.r + 'h';
+    return tk.r;
+  });
+  // 促音・撥音は後続の綴りで決まる
+  toks.forEach((tk, i) => {
+    const next = parts.slice(i + 1).join('');
+    if (tk.t === 'q') {
+      if (next.startsWith('ch')) parts[i] = 't';
+      else if (next && !VOWELS.includes(next[0]) && /[a-z]/.test(next[0])) parts[i] = next[0];
+      else parts[i] = '';
+    } else if (tk.t === 'n') {
+      parts[i] = (opt.nBefore === 'm' && /^[bmp]/.test(next)) ? 'm' : 'n';
+    }
+  });
+  const notes = [];
+  if (unknown.length) notes.push(`${word}：変換できない文字「${[...new Set(unknown)].join('')}」（漢字は非対応）`);
+  return { roma: parts.join(''), notes };
+}
+
+const titleCase = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+
+function convertKanaLine(line, opt) {
+  const words = splitName(line);
+  if (!words.length) return null;
+  const conv = words.map(w => kanaWordToRomaji(w, opt));
+  // 入力は「姓 名」の順。先頭を姓とみなす
+  let names = conv.map((c, i) => {
+    const isFamily = i === 0 && conv.length > 1;
+    if (opt.case === 'upper' || (opt.case === 'upper-family' && isFamily)) return c.roma.toUpperCase();
+    return titleCase(c.roma);
+  });
+  if (opt.reverse) names = names.reverse();
+  const notes = conv.flatMap(c => c.notes);
+  return { result: names.join(opt.sep ?? ' '), noteText: notes.join(' / '), noteHtml: notes.map(escapeHtml) };
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ========== UI ========== */
+if (typeof document !== 'undefined') {
+  const $ = s => document.querySelector(s);
+  const radio = name => document.querySelector(`input[name="${name}"]:checked`).value;
+  const SAMPLES = {
+    r2k: 'Taro YAMADA\nHanako Suzuki\nYuuko SATOH\nShohei OHNO\nKenta HOMMA\nyuko TANAKA',
+    k2r: 'ヤマダ タロウ\nすずき はなこ\nサトウ ユウコ\nオオノ ショウヘイ\nホンマ ケンタ\nなんば けんいち\nハットリ ジュンペイ',
+  };
+  const results = { r2k: [], k2r: [] };
+  const STORE_KEY = 'hepburn-tool-v1';
+
+  function render(mode) {
+    const input = $(`#${mode}-input`).value;
+    const opt = mode === 'r2k'
+      ? { script: radio('r2k-script'), reverse: $('#r2k-reverse').checked, sep: $('#r2k-sep').value, mark: $('#r2k-mark').checked }
+      : { long: radio('k2r-long'), nBefore: radio('k2r-n'), case: radio('k2r-case'), reverse: $('#k2r-reverse').checked, sep: $('#k2r-sep').value };
+    const fn = mode === 'r2k' ? convertRomajiLine : convertKanaLine;
+    const lines = input.replace(/\r\n?/g, '\n').split('\n');
+    // 末尾の空行は無視
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+    const rows = lines.map(line => ({ input: line.trim(), ...(fn(line, opt) || { result: '', noteText: '', noteHtml: [] }) }));
+    results[mode] = rows;
+    const out = $(`#${mode}-out`);
+    if (!rows.length) {
+      out.innerHTML = '<p class="empty">入力するとここに結果が表示されます。</p>';
+      return;
+    }
+    out.innerHTML = `<table><thead><tr><th>#</th><th>入力</th><th>変換結果</th><th>注記</th></tr></thead><tbody>${
+      rows.map((r, i) => `<tr><td class="num">${i + 1}</td><td class="in">${escapeHtml(r.input)}</td><td class="out">${escapeHtml(r.result)}</td><td class="note">${
+        r.noteHtml.map(n => `<div class="note-line">※${n}</div>`).join('')}</td></tr>`).join('')
+    }</tbody></table>`;
+  }
+
+  function saveState() {
+    try {
+      const state = {};
+      document.querySelectorAll('input, select, textarea').forEach(el => {
+        if (el.type === 'radio') { if (el.checked) state[el.name] = el.value; }
+        else if (el.type === 'checkbox') state[el.id] = el.checked;
+        else state[el.id] = el.value;
+      });
+      state.tab = document.querySelector('.tab[aria-selected="true"]').id;
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    } catch (e) { /* 保存できない環境では無視 */ }
+  }
+
+  function loadState() {
+    try {
+      const state = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+      if (!state) return;
+      document.querySelectorAll('input, select, textarea').forEach(el => {
+        if (el.type === 'radio') { if (state[el.name] !== undefined) el.checked = state[el.name] === el.value; }
+        else if (el.type === 'checkbox') { if (state[el.id] !== undefined) el.checked = state[el.id]; }
+        else if (state[el.id] !== undefined) el.value = state[el.id];
+      });
+      if (state.tab) selectTab(state.tab);
+    } catch (e) { /* 無視 */ }
+  }
+
+  function selectTab(id) {
+    document.querySelectorAll('.tab').forEach(t => {
+      const on = t.id === id;
+      t.setAttribute('aria-selected', on);
+      document.getElementById(t.getAttribute('aria-controls')).classList.toggle('active', on);
+    });
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const el = $('#toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 1600);
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+  }
+
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => { selectTab(t.id); saveState(); }));
+  document.addEventListener('input', e => {
+    const panel = e.target.closest('.panel');
+    if (panel) { render(panel.id.replace('panel-', '')); saveState(); }
+  });
+  document.querySelectorAll('[data-sample]').forEach(b => b.addEventListener('click', () => {
+    const mode = b.dataset.sample;
+    $(`#${mode}-input`).value = SAMPLES[mode];
+    render(mode); saveState();
+  }));
+  document.querySelectorAll('[data-clear]').forEach(b => b.addEventListener('click', () => {
+    const mode = b.dataset.clear;
+    $(`#${mode}-input`).value = '';
+    render(mode); saveState();
+    $(`#${mode}-input`).focus();
+  }));
+  document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', async () => {
+    const rows = results[b.dataset.copy];
+    if (!rows.length) return toast('コピーする結果がありません');
+    await copyText(rows.map(r => r.result).join('\n'));
+    toast(`${rows.length}行の結果をコピーしました`);
+  }));
+  document.querySelectorAll('[data-copy-tsv]').forEach(b => b.addEventListener('click', async () => {
+    const rows = results[b.dataset.copyTsv];
+    if (!rows.length) return toast('コピーする結果がありません');
+    const tsv = ['入力\t変換結果\t注記', ...rows.map(r => [r.input, r.result, r.noteText].join('\t'))].join('\n');
+    await copyText(tsv);
+    toast('表形式（タブ区切り）でコピーしました');
+  }));
+
+  loadState();
+  render('r2k');
+  render('k2r');
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { convertRomajiLine, convertKanaLine };
+}
+</script>
+</body>
+</html>
